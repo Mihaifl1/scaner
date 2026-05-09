@@ -3,72 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan QR Camera</title>
-    <script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js"></script>
+    <title>Test Cameră</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background: #111; color: white; margin:0; padding:20px; }
+        body { font-family: Arial; text-align: center; background: #111; color: white; padding: 20px; }
         video { width:100%; max-width:500px; border:5px solid #0f0; border-radius:15px; }
-        #result { margin:20px; padding:20px; background:#222; border-radius:12px; font-size:1.3em; min-height:100px; }
-        button { padding:18px 35px; font-size:1.4em; margin:15px; border-radius:12px; background:#0f0; color:black; font-weight:bold; }
-        .info { color: #ff0; font-size:1.1em; }
+        button { padding:20px 40px; font-size:1.5em; margin:20px; background:#0f0; color:black; border-radius:12px; }
     </style>
 </head>
 <body>
-    <h1>📷 Scanare QR cu Camera</h1>
-    <p class="info">Apasă butonul și acceptă permisiunea pentru cameră</p>
-    
-    <video id="video"></video>
-    <div id="result">Aștept pornirea camerei...</div>
-    
-    <button onclick="startScan()">▶ Pornire Cameră</button>
+    <h1>Test Permisiune Cameră</h1>
+    <button onclick="testCamera()">📷 Testează Camera Acum</button>
+    <video id="video" autoplay playsinline></video>
+    <div id="status">Apasă butonul...</div>
 
     <script>
-        let qrScanner = null;
+        function testCamera() {
+            document.getElementById('status').innerHTML = "Se cere permisiunea...";
 
-        function startScan() {
-            document.getElementById('result').innerHTML = "Se cere permisiunea pentru cameră...";
-
-            qrScanner = new QrScanner(
-                document.getElementById('video'), 
-                result => {
-                    document.getElementById('result').innerHTML = `
-                        <strong>✅ Cod scanat:</strong><br>
-                        <span style="color:#0f0; font-size:1.4em;">${result}</span>
-                    `;
-                    alert("✅ Scanat cu succes!\n\n" + result);
-                    stopScan();
-                },
-                {
-                    highlightScanRegion: true,
-                    highlightCodeOutline: true,
-                    facingMode: "environment",   // cameră din spate
-                    maxScansPerSecond: 10
-                }
-            );
-
-            qrScanner.start()
-                .then(() => {
-                    console.log("Camera pornită cu succes");
-                })
-                .catch(err => {
-                    console.error(err);
-                    let msg = "Eroare: ";
-                    if (err.name === "NotAllowedError") {
-                        msg += "Permisiunea pentru cameră a fost refuzată.";
-                    } else if (err.name === "NotFoundError") {
-                        msg += "Nu s-a găsit nicio cameră.";
-                    } else {
-                        msg += err.message;
-                    }
-                    document.getElementById('result').innerHTML = `<span style="color:red;">${msg}</span>`;
-                });
-        }
-
-        function stopScan() {
-            if (qrScanner) {
-                qrScanner.stop();
-                qrScanner = null;
-            }
+            navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" } 
+            })
+            .then(stream => {
+                document.getElementById('video').srcObject = stream;
+                document.getElementById('status').innerHTML = "<span style='color:#0f0'>✅ Camera pornită!</span>";
+            })
+            .catch(err => {
+                document.getElementById('status').innerHTML = `<span style='color:red'>Eroare: ${err.name} - ${err.message}</span>`;
+                alert("Eroare: " + err.name + "\n" + err.message);
+            });
         }
     </script>
 </body>
