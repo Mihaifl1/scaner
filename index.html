@@ -3,34 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Cameră</title>
+    <title>Scan QR - Camera Mea</title>
+    <script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js"></script>
     <style>
-        body { font-family: Arial; text-align: center; background: #111; color: white; padding: 20px; }
+        body { font-family: Arial, sans-serif; text-align: center; background: #111; color: white; margin:0; padding:20px; }
         video { width:100%; max-width:500px; border:5px solid #0f0; border-radius:15px; }
-        button { padding:20px 40px; font-size:1.5em; margin:20px; background:#0f0; color:black; border-radius:12px; }
+        #result { margin:20px; padding:20px; background:#222; border-radius:12px; font-size:1.4em; min-height:100px; }
+        button { padding:18px 35px; font-size:1.4em; margin:15px; border-radius:12px; background:#0f0; color:black; font-weight:bold; }
     </style>
 </head>
 <body>
-    <h1>Test Permisiune Cameră</h1>
-    <button onclick="testCamera()">📷 Testează Camera Acum</button>
-    <video id="video" autoplay playsinline></video>
-    <div id="status">Apasă butonul...</div>
+    <h1>📷 Scanare QR Code</h1>
+    
+    <video id="video"></video>
+    <div id="result">Apasă butonul și țintește un QR Code</div>
+    
+    <button onclick="startScanner()">▶ Pornire Scaner QR</button>
+    <button onclick="stopScanner()">⏹ Oprire</button>
 
     <script>
-        function testCamera() {
-            document.getElementById('status').innerHTML = "Se cere permisiunea...";
+        let qrScanner = null;
 
-            navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment" } 
-            })
-            .then(stream => {
-                document.getElementById('video').srcObject = stream;
-                document.getElementById('status').innerHTML = "<span style='color:#0f0'>✅ Camera pornită!</span>";
-            })
-            .catch(err => {
-                document.getElementById('status').innerHTML = `<span style='color:red'>Eroare: ${err.name} - ${err.message}</span>`;
-                alert("Eroare: " + err.name + "\n" + err.message);
+        function startScanner() {
+            document.getElementById('result').innerHTML = "📍 Se pornește scanerul...";
+
+            qrScanner = new QrScanner(
+                document.getElementById('video'),
+                result => {
+                    document.getElementById('result').innerHTML = `
+                        <strong>✅ COD SCANAT CU SUCCES!</strong><br>
+                        <span style="color:#0f0; font-size:1.5em; word-break:break-all;">${result}</span>
+                    `;
+                    alert("✅ Scanat:\n" + result);
+                    // Aici poți adăuga trimitere către Synology mai târziu
+                    stopScanner();
+                },
+                {
+                    highlightScanRegion: true,
+                    highlightCodeOutline: true,
+                    facingMode: "environment",
+                    maxScansPerSecond: 8
+                }
+            );
+
+            qrScanner.start().catch(err => {
+                document.getElementById('result').innerHTML = `<span style="color:red">Eroare: ${err}</span>`;
             });
+        }
+
+        function stopScanner() {
+            if (qrScanner) {
+                qrScanner.stop();
+                qrScanner = null;
+            }
         }
     </script>
 </body>
