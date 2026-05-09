@@ -1,25 +1,25 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-    <meta charset="UTF-8"> 
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scan QR Camera</title>
     <script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background: #111; color: white; margin:0; padding:20px; }
-        video { width:100%; max-width:500px; border:5px solid #0f0; border-radius:15px; }
-        #result { margin:20px; padding:20px; background:#222; border-radius:12px; font-size:1.4em; min-height:80px; }
-        button { padding:18px 35px; font-size:1.3em; margin:10px; border-radius:12px; background:#0f0; color:black; font-weight:bold; }
+        video { width:100%; max-width:500px; border:5px solid #0f0; border-radius:15px; background:#000; }
+        #result { margin:20px; padding:20px; background:#222; border-radius:12px; font-size:1.3em; min-height:80px; }
+        button { padding:18px 35px; font-size:1.3em; margin:10px; border-radius:12px; font-weight:bold; }
+        .success { background:#0f0; color:black; }
     </style>
 </head>
 <body>
     <h1>📷 Scanare QR cu Camera</h1>
-    <p>Apasă butonul pentru a porni camera</p>
     
     <video id="video"></video>
-    <div id="result">Aștept scanare...</div>
+    <div id="result">Apasă butonul de mai jos</div>
     
-    <button onclick="startScan()">▶ Pornire Cameră</button>
+    <button onclick="startScan()" class="success">▶ Pornire Cameră</button>
     <button onclick="stopScan()">⏹ Oprire Cameră</button>
 
     <script>
@@ -27,14 +27,44 @@
 
         function startScan() {
             const video = document.getElementById('video');
+            const resultDiv = document.getElementById('result');
             
+            resultDiv.textContent = "Se pornește camera... (verifică permisiunea)";
+
             qrScanner = new QrScanner(video, result => {
-                document.getElementById('result').innerHTML = `
-                    <strong>✅ Cod scanat:</strong><br>
-                    <span style="color:#0f0; font-size:1.3em;">${result}</span>
-                `;
+                resultDiv.innerHTML = `<strong>✅ Cod scanat:</strong><br><span style="color:#0f0; font-size:1.4em;">${result}</span>`;
                 alert("✅ Scanat cu succes!\n\n" + result);
                 stopScan();
+            }, {
+                preferredCamera: "environment",   // cameră din spate
+                highlightScanRegion: true,
+                highlightCodeOutline: true,
+                maxScansPerSecond: 10
+            });
+
+            qrScanner.start()
+                .then(() => {
+                    resultDiv.textContent = "Camera pornită. Țintește un QR code!";
+                })
+                .catch(err => {
+                    resultDiv.innerHTML = `<span style="color:red;">❌ Eroare: ${err}</span><br><small>Verifică dacă ai dat permisiune pentru cameră</small>`;
+                    console.error(err);
+                });
+        }
+
+        function stopScan() {
+            if (qrScanner) {
+                qrScanner.stop();
+                qrScanner.destroy();
+                qrScanner = null;
+            }
+        }
+
+        // Permisiune automată la încărcare (opțional)
+        // window.onload = () => setTimeout(startScan, 800);
+    </script>
+</body>
+</html>                stopScan();
             }, {
                 highlightScanRegion: true,
                 highlightCodeOutline: true,
