@@ -7,78 +7,67 @@
     <script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background: #111; color: white; margin:0; padding:20px; }
-        video { width:100%; max-width:500px; border:5px solid #0f0; border-radius:15px; background:#000; }
-        #result { margin:20px; padding:20px; background:#222; border-radius:12px; font-size:1.3em; min-height:80px; }
-        button { padding:18px 35px; font-size:1.3em; margin:10px; border-radius:12px; font-weight:bold; }
-        .success { background:#0f0; color:black; }
+        video { width:100%; max-width:500px; border:5px solid #0f0; border-radius:15px; }
+        #result { margin:20px; padding:20px; background:#222; border-radius:12px; font-size:1.3em; min-height:100px; }
+        button { padding:18px 35px; font-size:1.4em; margin:15px; border-radius:12px; background:#0f0; color:black; font-weight:bold; }
+        .info { color: #ff0; font-size:1.1em; }
     </style>
 </head>
 <body>
     <h1>📷 Scanare QR cu Camera</h1>
+    <p class="info">Apasă butonul și acceptă permisiunea pentru cameră</p>
     
     <video id="video"></video>
-    <div id="result">Apasă butonul de mai jos</div>
+    <div id="result">Aștept pornirea camerei...</div>
     
-    <button onclick="startScan()" class="success">▶ Pornire Cameră</button>
-    <button onclick="stopScan()">⏹ Oprire Cameră</button>
+    <button onclick="startScan()">▶ Pornire Cameră</button>
 
     <script>
         let qrScanner = null;
 
         function startScan() {
-            const video = document.getElementById('video');
-            const resultDiv = document.getElementById('result');
-            
-            resultDiv.textContent = "Se pornește camera... (verifică permisiunea)";
+            document.getElementById('result').innerHTML = "Se cere permisiunea pentru cameră...";
 
-            qrScanner = new QrScanner(video, result => {
-                resultDiv.innerHTML = `<strong>✅ Cod scanat:</strong><br><span style="color:#0f0; font-size:1.4em;">${result}</span>`;
-                alert("✅ Scanat cu succes!\n\n" + result);
-                stopScan();
-            }, {
-                preferredCamera: "environment",   // cameră din spate
-                highlightScanRegion: true,
-                highlightCodeOutline: true,
-                maxScansPerSecond: 10
-            });
+            qrScanner = new QrScanner(
+                document.getElementById('video'), 
+                result => {
+                    document.getElementById('result').innerHTML = `
+                        <strong>✅ Cod scanat:</strong><br>
+                        <span style="color:#0f0; font-size:1.4em;">${result}</span>
+                    `;
+                    alert("✅ Scanat cu succes!\n\n" + result);
+                    stopScan();
+                },
+                {
+                    highlightScanRegion: true,
+                    highlightCodeOutline: true,
+                    facingMode: "environment",   // cameră din spate
+                    maxScansPerSecond: 10
+                }
+            );
 
             qrScanner.start()
                 .then(() => {
-                    resultDiv.textContent = "Camera pornită. Țintește un QR code!";
+                    console.log("Camera pornită cu succes");
                 })
                 .catch(err => {
-                    resultDiv.innerHTML = `<span style="color:red;">❌ Eroare: ${err}</span><br><small>Verifică dacă ai dat permisiune pentru cameră</small>`;
                     console.error(err);
+                    let msg = "Eroare: ";
+                    if (err.name === "NotAllowedError") {
+                        msg += "Permisiunea pentru cameră a fost refuzată.";
+                    } else if (err.name === "NotFoundError") {
+                        msg += "Nu s-a găsit nicio cameră.";
+                    } else {
+                        msg += err.message;
+                    }
+                    document.getElementById('result').innerHTML = `<span style="color:red;">${msg}</span>`;
                 });
         }
 
         function stopScan() {
             if (qrScanner) {
                 qrScanner.stop();
-                qrScanner.destroy();
                 qrScanner = null;
-            }
-        }
-
-        // Permisiune automată la încărcare (opțional)
-        // window.onload = () => setTimeout(startScan, 800);
-    </script>
-</body>
-</html>                stopScan();
-            }, {
-                highlightScanRegion: true,
-                highlightCodeOutline: true,
-                facingMode: "environment"
-            });
-
-            qrScanner.start().catch(err => {
-                alert("❌ Eroare la pornirea camerei:\n" + err);
-            });
-        }
-
-        function stopScan() {
-            if (qrScanner) {
-                qrScanner.stop();
             }
         }
     </script>
