@@ -13,20 +13,51 @@
             color: white; 
             margin:0; 
             padding:20px; 
+            overflow: hidden;
+        }
+        .container {
+            position: relative;
+            max-width: 500px;
+            margin: 0 auto;
         }
         video { 
             width:100%; 
-            max-width:500px; 
             border:5px solid #0f0; 
             border-radius:15px; 
         }
+        /* Pătrat orientativ */
+        .scan-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 260px;
+            height: 260px;
+            border: 4px solid #00ff00;
+            border-radius: 15px;
+            box-shadow: 0 0 0 200px rgba(0,0,0,0.6);
+            pointer-events: none;
+        }
+        .scan-line {
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            right: 10%;
+            height: 3px;
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+            animation: scan 2s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 20%; }
+            100% { top: 80%; }
+        }
         #result { 
             margin:20px; 
-            padding:20px; 
+            padding:15px; 
             background:#222; 
             border-radius:12px; 
-            font-size:1.4em; 
-            min-height:80px;
+            font-size:1.3em; 
         }
         button { 
             padding:18px 35px; 
@@ -41,8 +72,15 @@
 </head>
 <body>
     <h1>📷 Scanare QR Code</h1>
-    <video id="video" autoplay playsinline></video>
-    <div id="result">Apasă Start și țintește QR-ul</div>
+    
+    <div class="container">
+        <video id="video" autoplay playsinline></video>
+        <div class="scan-overlay">
+            <div class="scan-line"></div>
+        </div>
+    </div>
+
+    <div id="result">Apasă Start și încadrează QR-ul în pătrat</div>
     <button onclick="startCamera()">▶ Pornire Cameră</button>
 
     <script>
@@ -50,7 +88,7 @@
         let stream = null;
 
         function startCamera() {
-            document.getElementById('result').innerHTML = "Se cere permisiunea pentru cameră...";
+            document.getElementById('result').innerHTML = "Se deschide camera...";
 
             navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: "environment" } 
@@ -58,34 +96,25 @@
             .then(s => {
                 stream = s;
                 video.srcObject = stream;
-                document.getElementById('result').innerHTML = "✅ Camera pornită!<br>Țintește QR-ul...";
+                document.getElementById('result').innerHTML = "✅ Încadrează QR-ul în pătratul verde";
                 scanQR();
             })
-            .catch(err => {
-                document.getElementById('result').innerHTML = `<span style="color:red">Eroare: ${err.message}</span>`;
-                alert("Eroare cameră: " + err.message);
-            });
+            .catch(err => alert("Eroare: " + err.message));
         }
 
         function scanQR() {
-            if (!video.videoWidth) {
-                setTimeout(scanQR, 200);
-                return;
-            }
-
             const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0);
 
-            const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+            const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data, canvas.width, canvas.height);
 
             if (code) {
                 const scanned = code.data;
                 document.getElementById('result').innerHTML = `✅ Scanat:<br><b>${scanned}</b>`;
 
-                // === REDIRECT AUTOMAT ÎNAPOI ÎN APLICAȚIE ===
                 const returnUrl = new URLSearchParams(window.location.search).get('return');
                 if (returnUrl) {
                     let finalUrl = decodeURIComponent(returnUrl);
@@ -95,7 +124,6 @@
                     alert("Scanat: " + scanned);
                 }
 
-                // Oprește camera
                 if (stream) stream.getTracks().forEach(t => t.stop());
             } else {
                 setTimeout(scanQR, 200);
