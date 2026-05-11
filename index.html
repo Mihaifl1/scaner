@@ -4,239 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Scanner QR + DataMatrix ZXing</title>
+<title>test</title>
 
-<script type="module">
-
-import {
-    BrowserMultiFormatReader,
-    BarcodeFormat,
-    DecodeHintType
-}
-from 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm';
-
-let codeReader = null;
-let selectedDeviceId = null;
-let controls = null;
-
-window.startScanner = async function () {
-
-    try {
-
-        document.getElementById("result").innerHTML =
-            "📷 Se caută camera...";
-
-        const hints = new Map();
-
-        hints.set(
-            DecodeHintType.POSSIBLE_FORMATS,
-            [
-                BarcodeFormat.QR_CODE,
-                BarcodeFormat.DATA_MATRIX,
-                BarcodeFormat.CODE_128,
-                BarcodeFormat.CODE_39,
-                BarcodeFormat.EAN_13,
-                BarcodeFormat.EAN_8,
-                BarcodeFormat.PDF_417,
-                BarcodeFormat.AZTEC
-            ]
-        );
-
-        codeReader = new BrowserMultiFormatReader(hints);
-
-        const videoInputDevices =
-            await BrowserMultiFormatReader.listVideoInputDevices();
-
-        if (videoInputDevices.length === 0) {
-            alert("Nu există cameră!");
-            return;
-        }
-
-        // caută camera din spate
-        const backCamera = videoInputDevices.find(device =>
-            device.label.toLowerCase().includes('back') ||
-            device.label.toLowerCase().includes('rear') ||
-            device.label.toLowerCase().includes('environment')
-        );
-
-        selectedDeviceId =
-            backCamera ?
-            backCamera.deviceId :
-            videoInputDevices[0].deviceId;
-
-        document.getElementById("result").innerHTML =
-            "✅ Camera pornită";
-
-        document.getElementById("overlay").style.display = "block";
-
-        controls = await codeReader.decodeFromVideoDevice(
-            selectedDeviceId,
-            'video',
-
-            (result, err, controls) => {
-
-                if (result) {
-
-                    navigator.vibrate?.(200);
-
-                    const scanned = result.getText();
-
-                    document.getElementById("result").innerHTML =
-                        `
-                        <div style="color:#00ff00">
-                            ✅ COD SCANAT
-                        </div>
-
-                        <div style="
-                            margin-top:15px;
-                            font-size:1.4em;
-                            word-break:break-all;
-                            color:white;
-                        ">
-                            ${scanned}
-                        </div>
-
-                        <div style="
-                            margin-top:10px;
-                            color:#999;
-                        ">
-                            Tip:
-                            ${result.getBarcodeFormat()}
-                        </div>
-                        `;
-
-                    stopScanner();
-
-                    const returnUrl =
-                        new URLSearchParams(window.location.search)
-                        .get('return');
-
-                    if (returnUrl) {
-
-                        let finalUrl =
-                            decodeURIComponent(returnUrl);
-
-                        finalUrl +=
-                            (finalUrl.includes('?') ? '&' : '?')
-                            + 'code='
-                            + encodeURIComponent(scanned);
-
-                        setTimeout(() => {
-
-                            window.location.href = finalUrl;
-
-                        }, 600);
-                    }
-                }
-            }
-        );
-
-    } catch (err) {
-
-        console.error(err);
-
-        document.getElementById("result").innerHTML =
-            `
-            <span style="color:red">
-                ❌ Eroare:
-                ${err.message}
-            </span>
-            `;
-    }
-}
-
-window.stopScanner = function () {
-
-    if (controls) {
-        controls.stop();
-    }
-
-    if (codeReader) {
-        codeReader.reset();
-    }
-
-    document.getElementById("overlay").style.display = "none";
-}
-
-window.toggleTorch = async function () {
-
-    const video = document.getElementById("video");
-
-    const track =
-        video.srcObject
-        ?.getVideoTracks()[0];
-
-    if (!track) {
-        alert("Torch indisponibil");
-        return;
-    }
-
-    const capabilities = track.getCapabilities();
-
-    if (!capabilities.torch) {
-        alert("Telefonul nu suportă flashlight");
-        return;
-    }
-
-    const settings = track.getSettings();
-
-    await track.applyConstraints({
-        advanced: [{
-            torch: !settings.torch
-        }]
-    });
-}
-
-</script>
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <style>
 
 body{
-    margin:0;
-    padding:0;
-    background:#000;
-    color:white;
     font-family:Arial;
     text-align:center;
-}
-
-.header{
+    background:#000;
+    color:white;
+    margin:0;
     padding:20px;
-    font-size:2em;
-    font-weight:bold;
 }
 
 .container{
     position:relative;
-    width:100%;
-    max-width:550px;
+    max-width:500px;
     margin:auto;
 }
 
 video{
     width:100%;
-    border-radius:20px;
     border:5px solid #00ff00;
+    border-radius:15px;
+    display:none;
     background:black;
 }
 
-#overlay{
+.scan-overlay{
 
     position:absolute;
 
     top:50%;
     left:50%;
 
-    transform:translate(-50%, -50%);
+    transform:translate(-50%,-50%);
 
     width:260px;
     height:260px;
 
     border:4px solid #00ff00;
-    border-radius:20px;
 
-    box-shadow:
-        0 0 0 9999px rgba(0,0,0,0.65);
+    border-radius:15px;
+
+    box-shadow:0 0 0 200px rgba(0,0,0,0.7);
 
     pointer-events:none;
 
@@ -247,6 +60,7 @@ video{
 
     position:absolute;
 
+    top:20%;
     left:10%;
     right:10%;
 
@@ -254,7 +68,7 @@ video{
 
     background:#00ff00;
 
-    box-shadow:0 0 15px #00ff00;
+    box-shadow:0 0 12px #00ff00;
 
     animation:scan 2s linear infinite;
 }
@@ -262,59 +76,50 @@ video{
 @keyframes scan{
 
     0%{
-        top:15%;
+        top:20%;
     }
 
     100%{
-        top:85%;
+        top:80%;
     }
 }
 
 #result{
 
-    margin:20px auto;
+    margin:20px;
 
-    width:90%;
-    max-width:500px;
+    padding:15px;
 
-    background:#1a1a1a;
+    background:#222;
 
-    padding:20px;
-
-    border-radius:20px;
+    border-radius:12px;
 
     font-size:1.2em;
 
-    min-height:80px;
-}
-
-.buttons{
-
-    margin-top:20px;
+    word-break:break-all;
 }
 
 button{
 
-    padding:18px 30px;
-
-    margin:10px;
+    padding:18px 35px;
 
     font-size:1.2em;
 
-    border:none;
+    margin:10px;
 
-    border-radius:15px;
+    border-radius:12px;
+
+    background:#00ff00;
+
+    color:black;
 
     font-weight:bold;
 
-    cursor:pointer;
-
-    transition:0.2s;
+    border:none;
 }
 
-.start-btn{
-    background:#00ff00;
-    color:black;
+.flash-btn{
+    background:#ffaa00;
 }
 
 .stop-btn{
@@ -322,40 +127,24 @@ button{
     color:white;
 }
 
-.torch-btn{
-    background:#ffaa00;
-    color:black;
-}
-
-button:active{
-    transform:scale(0.96);
-}
-
-.info{
-
-    margin-top:20px;
-
-    color:#888;
-
-    font-size:0.95em;
-
-    padding-bottom:30px;
-}
-
 </style>
 </head>
 
 <body>
 
-<div class="header">
-    📷 ZXing Scanner
-</div>
+<h1>📷 QR + DataMatrix</h1>
 
 <div class="container">
 
-    <video id="video"></video>
+    <video
+        id="video"
+        autoplay
+        playsinline>
+    </video>
 
-    <div id="overlay">
+    <div
+        class="scan-overlay"
+        id="overlay">
 
         <div class="scan-line"></div>
 
@@ -369,40 +158,198 @@ button:active{
 
 </div>
 
-<div class="buttons">
+<button onclick="startCamera()">
 
-    <button
-        class="start-btn"
-        onclick="startScanner()">
+    ▶ START
 
-        ▶ START
+</button>
 
-    </button>
+<button
+    class="flash-btn"
+    onclick="toggleFlash()">
 
-    <button
-        class="stop-btn"
-        onclick="stopScanner()">
+    🔦 FLASH
 
-        ■ STOP
+</button>
 
-    </button>
+<button
+    class="stop-btn"
+    onclick="stopCamera()">
 
-    <button
-        class="torch-btn"
-        onclick="toggleTorch()">
+    ■ STOP
 
-        🔦 FLASH
+</button>
 
-    </button>
+<script>
 
-</div>
+let video =
+    document.getElementById('video');
 
-<div class="info">
+let overlay =
+    document.getElementById('overlay');
 
-    Suport:
-    QR • DataMatrix • Code128 • PDF417 • Aztec
+let stream = null;
 
-</div>
+let scanning = false;
+
+let codeReader =
+    new ZXing.BrowserMultiFormatReader();
+
+async function startCamera(){
+
+    try{
+
+        document.getElementById('result').innerHTML =
+            "📷 Se deschide camera...";
+
+        stream =
+            await navigator.mediaDevices.getUserMedia({
+
+                video:{
+                    facingMode:{
+                        ideal:"environment"
+                    }
+                },
+
+                audio:false
+            });
+
+        video.srcObject = stream;
+
+        video.style.display = "block";
+
+        overlay.style.display = "block";
+
+        scanning = true;
+
+        document.getElementById('result').innerHTML =
+            "✅ Scanează QR / DataMatrix";
+
+        scanLoop();
+
+    }catch(err){
+
+        console.error(err);
+
+        document.getElementById('result').innerHTML =
+            `
+            <span style="color:red">
+                ❌ ${err.message}
+            </span>
+            `;
+
+        alert("Eroare cameră: " + err.message);
+    }
+}
+
+function stopCamera(){
+
+    scanning = false;
+
+    if(stream){
+
+        stream.getTracks()
+            .forEach(track => track.stop());
+    }
+
+    video.style.display = "none";
+
+    overlay.style.display = "none";
+
+    document.getElementById('result').innerHTML =
+        "■ Scanner oprit";
+}
+
+async function scanLoop(){
+
+    if(!scanning)
+        return;
+
+    try{
+
+        const result =
+            await codeReader.decodeOnceFromVideoElement(video);
+
+        if(result){
+
+            navigator.vibrate?.(200);
+
+            const scanned =
+                result.getText();
+
+            document.getElementById('result').innerHTML =
+                `
+                ✅ Scanat:<br><br>
+
+                <b>${scanned}</b>
+
+                <br><br>
+
+                Tip:
+                ${result.getBarcodeFormat()}
+                `;
+
+            stopCamera();
+
+            const returnUrl =
+                new URLSearchParams(window.location.search)
+                .get('return');
+
+            if(returnUrl){
+
+                let finalUrl =
+                    decodeURIComponent(returnUrl);
+
+                finalUrl +=
+                    (finalUrl.includes('?') ? '&' : '?')
+                    + 'code='
+                    + encodeURIComponent(scanned);
+
+                setTimeout(() => {
+
+                    window.location.href =
+                        finalUrl;
+
+                },500);
+            }
+        }
+
+    }catch(e){
+    }
+
+    requestAnimationFrame(scanLoop);
+}
+
+async function toggleFlash(){
+
+    if(!stream)
+        return;
+
+    const track =
+        stream.getVideoTracks()[0];
+
+    const capabilities =
+        track.getCapabilities();
+
+    if(!capabilities.torch){
+
+        alert("Flash indisponibil");
+
+        return;
+    }
+
+    const settings =
+        track.getSettings();
+
+    await track.applyConstraints({
+
+        advanced:[{
+            torch: !settings.torch
+        }]
+    });
+}
+
+</script>
 
 </body>
 </html>
