@@ -3,75 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan QR & DataMatrix1</title>
+    <title>Scan QR & DataMatrix2</title>
     
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background: #000;
-            color: white;
-            margin:0;
-            padding:20px;
-        }
-        .container {
-            position: relative;
-            max-width: 500px;
-            margin: 0 auto;
-            background: #111;
-            border-radius: 15px;
-            overflow: hidden;
-        }
-        #video {
-            width: 100%;
-            display: none;
-        }
+        body { font-family: Arial, sans-serif; text-align: center; background: #000; color: white; margin:0; padding:20px; }
+        .container { position: relative; max-width: 500px; margin: 0 auto; background:#111; border-radius:15px; overflow:hidden; }
+        #video { width:100%; display:none; }
         .scan-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 260px;
-            height: 260px;
-            border: 4px solid #00ff00;
-            border-radius: 15px;
-            box-shadow: 0 0 0 300px rgba(0,0,0,0.85);
-            pointer-events: none;
-            display: none;
+            position: absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+            width:260px; height:260px; border:4px solid #00ff00; border-radius:15px;
+            box-shadow:0 0 0 300px rgba(0,0,0,0.85); pointer-events:none; display:none;
         }
         .scan-line {
-            position: absolute;
-            top: 20%;
-            left: 10%;
-            right: 10%;
-            height: 3px;
-            background: #00ff00;
-            box-shadow: 0 0 12px #00ff00;
-            animation: scan 2s linear infinite;
+            position:absolute; top:20%; left:10%; right:10%; height:3px;
+            background:#00ff00; box-shadow:0 0 12px #00ff00;
+            animation:scan 2s linear infinite;
         }
-        @keyframes scan {
-            0% { top: 20%; }
-            100% { top: 80%; }
-        }
-        #result {
-            margin:20px;
-            padding:15px;
-            background:#222;
-            border-radius:12px;
-            font-size:1.2em;
-            min-height: 60px;
-        }
-        button {
-            padding:18px 35px;
-            font-size:1.4em;
-            margin:15px;
-            border-radius:12px;
-            background:#0f0;
-            color:black;
-            font-weight:bold;
-        }
+        @keyframes scan { 0% {top:20%;} 100% {top:80%;} }
+        #result { margin:20px; padding:15px; background:#222; border-radius:12px; font-size:1.2em; min-height:70px; }
+        button { padding:18px 35px; font-size:1.4em; margin:15px; border-radius:12px; background:#0f0; color:black; font-weight:bold; }
     </style>
 </head>
 <body>
@@ -84,62 +36,70 @@
         </div>
     </div>
     
-    <div id="result">Apasă butonul pentru a porni camera</div>
+    <div id="result">Apasă butonul →</div>
     <button onclick="startCamera()">▶ Pornire Cameră</button>
 
     <script>
         let html5QrCode = null;
 
         async function startCamera() {
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = "🔄 Se deschide camera... <br><small>(verific permisiuni)</small>";
+            const result = document.getElementById('result');
+            result.innerHTML = "🔄 Se inițializează camera...<br><small>Verificăm permisiuni...</small>";
+
+            console.log("=== START CAMERA ===");
 
             try {
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    throw new Error("Browser-ul nu suportă acces la cameră");
+                }
+
                 html5QrCode = new Html5Qrcode("video");
+
+                console.log("Html5Qrcode creat. Pornim camera...");
 
                 await html5QrCode.start(
                     { facingMode: "environment" },
-                    {
-                        fps: 12,
+                    { 
+                        fps: 10, 
                         qrbox: { width: 260, height: 260 },
-                        aspectRatio: 1.0,
-                        showTorchButtonIfSupported: true
+                        aspectRatio: 1.0 
                     },
                     (decodedText) => {
-                        resultDiv.innerHTML = `✅ Scanat:<br><b>${decodedText}</b>`;
+                        result.innerHTML = `✅ Scanat:<br><b>${decodedText}</b>`;
+                        console.log("Cod scanat:", decodedText);
                         const returnUrl = new URLSearchParams(window.location.search).get('return');
                         if (returnUrl) {
-                            let finalUrl = decodeURIComponent(returnUrl);
-                            finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(decodedText);
-                            setTimeout(() => window.location.href = finalUrl, 1000);
+                            let final = decodeURIComponent(returnUrl);
+                            final += (final.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(decodedText);
+                            setTimeout(() => window.location.href = final, 800);
                         }
                         stopCamera();
                     },
-                    () => {} // erori de scanare ignorate
+                    (err) => { /* erori normale de scanare */ }
                 );
 
-                // Dacă a pornit cu succes
+                // Succes
                 document.getElementById('video').style.display = "block";
                 document.getElementById('overlay').style.display = "block";
-                resultDiv.innerHTML = "✅ Încadrează codul (QR sau DataMatrix) în pătratul verde";
+                result.innerHTML = "✅ Camera pornită!<br>Încadrează codul în pătratul verde";
+
+                console.log("✅ Camera pornită cu succes!");
 
             } catch (err) {
-                console.error(err);
-                let msg = "Eroare necunoscută";
+                console.error("EROARE:", err);
+                let msg = "❌ Eroare necunoscută";
                 
-                if (err.name === "NotAllowedError") msg = "❌ Permisiunea camerei a fost refuzată";
-                else if (err.name === "NotFoundError") msg = "❌ Nu s-a găsit nicio cameră";
-                else if (err.name === "NotSupportedError") msg = "❌ Browser-ul nu suportă această funcție";
-                else if (String(err).includes("file://")) msg = "❌ Nu poți testa direct din fișier!<br>Deschide pagina prin server (localhost)";
-
-                resultDiv.innerHTML = `<span style="color:red">${msg}</span><br><small>${err.message || err}</small>`;
+                if (err.name === "NotAllowedError") msg = "❌ Permisiunea pentru cameră a fost REFUZATĂ";
+                else if (err.name === "NotFoundError") msg = "❌ Nu s-a găsit cameră";
+                else if (err.name === "NotSupportedError") msg = "❌ Browser-ul nu permite accesul";
+                else if (String(err).includes("file://")) msg = "❌ Nu funcționează pe file:// (trebuie HTTPS)";
+                
+                result.innerHTML = `${msg}<br><small style="color:#aaa">${err.message || err}</small>`;
             }
         }
 
         function stopCamera() {
-            if (html5QrCode) {
-                html5QrCode.stop().catch(() => {});
-            }
+            if (html5QrCode) html5QrCode.stop().catch(() => {});
         }
 
         window.addEventListener('beforeunload', stopCamera);
