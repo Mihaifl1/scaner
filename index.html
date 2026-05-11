@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>ZXing QR + DataMatrix</title>
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+<title>QR + DataMatrix Scanner</title>
 
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
@@ -131,7 +135,7 @@ button{
 
 <body>
 
-<h1>📷 ZXing Scanner</h1>
+<h1>📷 QR + DataMatrix</h1>
 
 <div class="container">
 
@@ -153,17 +157,9 @@ button{
 
 <div id="result">
 
-    Apasă START
+    Se pornește scannerul...
 
 </div>
-
-<button
-    class="start-btn"
-    onclick="startCamera()">
-
-    ▶ START
-
-</button>
 
 <button
     class="flash-btn"
@@ -236,6 +232,14 @@ async function startCamera(){
                 video:{
                     facingMode:{
                         ideal:"environment"
+                    },
+
+                    width:{
+                        ideal:1280
+                    },
+
+                    height:{
+                        ideal:720
                     }
                 },
 
@@ -253,7 +257,7 @@ async function startCamera(){
         scanning = true;
 
         resultDiv.innerHTML =
-            "✅ Scanează codul";
+            "✅ Scanează QR / DataMatrix";
 
         scanLoop();
 
@@ -410,6 +414,16 @@ async function toggleFlash(){
         }]
     });
 }
+
+window.addEventListener('load', () => {
+
+    setTimeout(() => {
+
+        startCamera();
+
+    }, 500);
+
+});
 
 </script>
 
