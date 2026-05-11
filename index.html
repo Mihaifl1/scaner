@@ -4,46 +4,342 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Scanner QR + DataMatrixs/title>
+<title>Scanner QR + DataMatrix ZXing</title>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
+<script type="module">
+
+import {
+    BrowserMultiFormatReader,
+    BarcodeFormat,
+    DecodeHintType
+}
+from 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm';
+
+let codeReader = null;
+let selectedDeviceId = null;
+let controls = null;
+
+window.startScanner = async function () {
+
+    try {
+
+        document.getElementById("result").innerHTML =
+            "📷 Se caută camera...";
+
+        const hints = new Map();
+
+        hints.set(
+            DecodeHintType.POSSIBLE_FORMATS,
+            [
+                BarcodeFormat.QR_CODE,
+                BarcodeFormat.DATA_MATRIX,
+                BarcodeFormat.CODE_128,
+                BarcodeFormat.CODE_39,
+                BarcodeFormat.EAN_13,
+                BarcodeFormat.EAN_8,
+                BarcodeFormat.PDF_417,
+                BarcodeFormat.AZTEC
+            ]
+        );
+
+        codeReader = new BrowserMultiFormatReader(hints);
+
+        const videoInputDevices =
+            await BrowserMultiFormatReader.listVideoInputDevices();
+
+        if (videoInputDevices.length === 0) {
+            alert("Nu există cameră!");
+            return;
+        }
+
+        // caută camera din spate
+        const backCamera = videoInputDevices.find(device =>
+            device.label.toLowerCase().includes('back') ||
+            device.label.toLowerCase().includes('rear') ||
+            device.label.toLowerCase().includes('environment')
+        );
+
+        selectedDeviceId =
+            backCamera ?
+            backCamera.deviceId :
+            videoInputDevices[0].deviceId;
+
+        document.getElementById("result").innerHTML =
+            "✅ Camera pornită";
+
+        document.getElementById("overlay").style.display = "block";
+
+        controls = await codeReader.decodeFromVideoDevice(
+            selectedDeviceId,
+            'video',
+
+            (result, err, controls) => {
+
+                if (result) {
+
+                    navigator.vibrate?.(200);
+
+                    const scanned = result.getText();
+
+                    document.getElementById("result").innerHTML =
+                        `
+                        <div style="color:#00ff00">
+                            ✅ COD SCANAT
+                        </div>
+
+                        <div style="
+                            margin-top:15px;
+                            font-size:1.4em;
+                            word-break:break-all;
+                            color:white;
+                        ">
+                            ${scanned}
+                        </div>
+
+                        <div style="
+                            margin-top:10px;
+                            color:#999;
+                        ">
+                            Tip:
+                            ${result.getBarcodeFormat()}
+                        </div>
+                        `;
+
+                    stopScanner();
+
+                    const returnUrl =
+                        new URLSearchParams(window.location.search)
+                        .get('return');
+
+                    if (returnUrl) {
+
+                        let finalUrl =
+                            decodeURIComponent(returnUrl);
+
+                        finalUrl +=
+                            (finalUrl.includes('?') ? '&' : '?')
+                            + 'code='
+                            + encodeURIComponent(scanned);
+
+                        setTimeout(() => {
+
+                            window.location.href = finalUrl;
+
+                        }, 600);
+                    }
+                }
+            }
+        );
+
+    } catch (err) {
+
+        console.error(err);
+
+        document.getElementById("result").innerHTML =
+            `
+            <span style="color:red">
+                ❌ Eroare:
+                ${err.message}
+            </span>
+            `;
+    }
+}
+
+window.stopScanner = function () {
+
+    if (controls) {
+        controls.stop();
+    }
+
+    if (codeReader) {
+        codeReader.reset();
+    }
+
+    document.getElementById("overlay").style.display = "none";
+}
+
+window.toggleTorch = async function () {
+
+    const video = document.getElementById("video");
+
+    const track =
+        video.srcObject
+        ?.getVideoTracks()[0];
+
+    if (!track) {
+        alert("Torch indisponibil");
+        return;
+    }
+
+    const capabilities = track.getCapabilities();
+
+    if (!capabilities.torch) {
+        alert("Telefonul nu suportă flashlight");
+        return;
+    }
+
+    const settings = track.getSettings();
+
+    await track.applyConstraints({
+        advanced: [{
+            torch: !settings.torch
+        }]
+    });
+}
+
+</script>
 
 <style>
 
 body{
+    margin:0;
+    padding:0;
     background:#000;
     color:white;
     font-family:Arial;
     text-align:center;
-    margin:0;
-    padding:20px;
 }
 
-#reader{
+.header{
+    padding:20px;
+    font-size:2em;
+    font-weight:bold;
+}
+
+.container{
+    position:relative;
     width:100%;
-    max-width:500px;
+    max-width:550px;
     margin:auto;
-    border:5px solid #00ff00;
+}
+
+video{
+    width:100%;
     border-radius:20px;
-    overflow:hidden;
+    border:5px solid #00ff00;
+    background:black;
+}
+
+#overlay{
+
+    position:absolute;
+
+    top:50%;
+    left:50%;
+
+    transform:translate(-50%, -50%);
+
+    width:260px;
+    height:260px;
+
+    border:4px solid #00ff00;
+    border-radius:20px;
+
+    box-shadow:
+        0 0 0 9999px rgba(0,0,0,0.65);
+
+    pointer-events:none;
+
+    display:none;
+}
+
+.scan-line{
+
+    position:absolute;
+
+    left:10%;
+    right:10%;
+
+    height:3px;
+
+    background:#00ff00;
+
+    box-shadow:0 0 15px #00ff00;
+
+    animation:scan 2s linear infinite;
+}
+
+@keyframes scan{
+
+    0%{
+        top:15%;
+    }
+
+    100%{
+        top:85%;
+    }
 }
 
 #result{
-    margin-top:20px;
-    background:#222;
-    padding:15px;
-    border-radius:15px;
+
+    margin:20px auto;
+
+    width:90%;
+    max-width:500px;
+
+    background:#1a1a1a;
+
+    padding:20px;
+
+    border-radius:20px;
+
     font-size:1.2em;
+
+    min-height:80px;
+}
+
+.buttons{
+
+    margin-top:20px;
 }
 
 button{
-    padding:18px 35px;
-    font-size:1.3em;
+
+    padding:18px 30px;
+
+    margin:10px;
+
+    font-size:1.2em;
+
     border:none;
+
     border-radius:15px;
-    background:#00ff00;
+
     font-weight:bold;
+
+    cursor:pointer;
+
+    transition:0.2s;
+}
+
+.start-btn{
+    background:#00ff00;
+    color:black;
+}
+
+.stop-btn{
+    background:#ff3333;
+    color:white;
+}
+
+.torch-btn{
+    background:#ffaa00;
+    color:black;
+}
+
+button:active{
+    transform:scale(0.96);
+}
+
+.info{
+
     margin-top:20px;
+
+    color:#888;
+
+    font-size:0.95em;
+
+    padding-bottom:30px;
 }
 
 </style>
@@ -51,92 +347,62 @@ button{
 
 <body>
 
-<h1>📷 QR + DataMatrix Scanner</h1>
-
-<div id="reader"></div>
-
-<div id="result">
-Apasă Start
+<div class="header">
+    📷 ZXing Scanner
 </div>
 
-<button onclick="startScanner()">
-▶ Start Scanner
-</button>
+<div class="container">
 
-<script>
+    <video id="video"></video>
 
-let scanner;
+    <div id="overlay">
 
-function startScanner(){
+        <div class="scan-line"></div>
 
-    document.getElementById("result").innerHTML =
-        "Se pornește camera...";
+    </div>
 
-    scanner = new Html5Qrcode("reader");
+</div>
 
-    scanner.start(
-        {
-            facingMode: "environment"
-        },
+<div id="result">
 
-        {
-            fps: 15,
-            qrbox: {
-                width: 280,
-                height: 280
-            },
+    Apasă START
 
-            formatsToSupport: [
+</div>
 
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.DATA_MATRIX,
+<div class="buttons">
 
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39,
-                Html5QrcodeSupportedFormats.EAN_13
-            ]
-        },
+    <button
+        class="start-btn"
+        onclick="startScanner()">
 
-        (decodedText, decodedResult) => {
+        ▶ START
 
-            navigator.vibrate?.(200);
+    </button>
 
-            document.getElementById("result").innerHTML =
-                "✅ Scanat:<br><b>" + decodedText + "</b>";
+    <button
+        class="stop-btn"
+        onclick="stopScanner()">
 
-            scanner.stop();
+        ■ STOP
 
-            const returnUrl =
-                new URLSearchParams(window.location.search)
-                .get('return');
+    </button>
 
-            if(returnUrl){
+    <button
+        class="torch-btn"
+        onclick="toggleTorch()">
 
-                let finalUrl =
-                    decodeURIComponent(returnUrl);
+        🔦 FLASH
 
-                finalUrl +=
-                    (finalUrl.includes('?') ? '&' : '?')
-                    + 'code='
-                    + encodeURIComponent(decodedText);
+    </button>
 
-                setTimeout(() => {
-                    window.location.href = finalUrl;
-                }, 500);
-            }
-        },
+</div>
 
-        (errorMessage) => {
-        }
-    )
-    .catch(err => {
+<div class="info">
 
-        document.getElementById("result").innerHTML =
-            "❌ Eroare cameră: " + err;
-    });
-}
+    Suport:
+    QR • DataMatrix • Code128 • PDF417 • Aztec
 
-</script>
+</div>
 
 </body>
 </html>
