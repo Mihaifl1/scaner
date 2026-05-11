@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan QR & DataMatrix</title>
+    <title>Scan QR & DataMatrixw</title>
     
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     
@@ -25,7 +25,6 @@
             width:100%;
             border:5px solid #0f0;
             border-radius:15px;
-            display: none;
         }
         .scan-overlay {
             position: absolute;
@@ -38,7 +37,6 @@
             border-radius: 15px;
             box-shadow: 0 0 0 200px rgba(0,0,0,0.7);
             pointer-events: none;
-            display: none;
         }
         .scan-line {
             position: absolute;
@@ -77,7 +75,7 @@
    
     <div class="container">
         <video id="video" autoplay playsinline muted></video>
-        <div class="scan-overlay" id="overlay">
+        <div class="scan-overlay" id="overlay" style="display:none">
             <div class="scan-line"></div>
         </div>
     </div>
@@ -86,84 +84,60 @@
     <button onclick="startCamera()">▶ Pornire Cameră</button>
 
     <script>
-        let video = document.getElementById('video');
-        let overlay = document.getElementById('overlay');
-        let stream = null;
-        let scanning = false;
+        let html5QrCode = null;
 
         function startCamera() {
-            document.getElementById('result').innerHTML = "Se deschide camera...";
+            document.getElementById('result').innerHTML = "🔄 Se deschide camera...";
 
-            navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment" }
-            })
-            .then(s => {
-                stream = s;
-                video.srcObject = stream;
-                video.style.display = "block";
-                overlay.style.display = "block";
-                
-                document.getElementById('result').innerHTML = "✅ Încadrează codul (QR sau DataMatrix) în pătratul verde";
-                
-                scanning = true;
-                scanLoop();           // bucla de scanare
-            })
-            .catch(err => {
-                document.getElementById('result').innerHTML = `<span style="color:red">Eroare: ${err.message}</span>`;
-                alert("Eroare cameră: " + err.message);
+            html5QrCode = new Html5Qrcode("video", {
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.DATA_MATRIX
+                ]
+            });
+
+            const config = {
+                fps: 12,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            };
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
+                    document.getElementById('result').innerHTML = `✅ Scanat:<br><b>${decodedText}</b>`;
+                    
+                    const returnUrl = new URLSearchParams(window.location.search).get('return');
+                    if (returnUrl) {
+                        let finalUrl = decodeURIComponent(returnUrl);
+                        finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(decodedText);
+                        setTimeout(() => window.location.href = finalUrl, 800);
+                    } else {
+                        alert("Scanat: " + decodedText);
+                    }
+                    stopCamera();
+                },
+                (error) => {
+                    // erori normale - ignorăm
+                }
+            ).then(() => {
+                document.getElementById('video').style.display = "block";
+                document.getElementById('overlay').style.display = "block";
+                document.getElementById('result').innerHTML = "✅ Încadrează codul în pătratul verde";
+            }).catch(err => {
+                console.error(err);
+                document.getElementById('result').innerHTML = `<span style="color:red">Eroare: ${err.message || err}</span>`;
             });
         }
 
-        async function scanLoop() {
-            if (!scanning) return;
-
-            if (video.videoWidth === 0) {
-                setTimeout(scanLoop, 200);
-                return;
+        function stopCamera() {
+            if (html5QrCode) {
+                html5QrCode.stop().catch(() => {});
             }
-
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0);
-
-                // Folosim html5-qrcode pentru ambele tipuri (mai bun la DataMatrix)
-                const html5QrCode = new Html5Qrcode("video"); // temporar doar pentru decode
-                const result = await html5QrCode.decodeFromImage(canvas.toDataURL());
-
-                if (result && result.decodedText) {
-                    handleScanSuccess(result.decodedText);
-                    return;
-                }
-            } catch (e) {
-                // nu am găsit cod → continuăm
-            }
-
-            setTimeout(scanLoop, 150); // scanare rapidă
         }
 
-        function handleScanSuccess(scanned) {
-            scanning = false;
-            document.getElementById('result').innerHTML = `✅ Scanat:<br><b>${scanned}</b>`;
-
-            const returnUrl = new URLSearchParams(window.location.search).get('return');
-            if (returnUrl) {
-                let finalUrl = decodeURIComponent(returnUrl);
-                finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(scanned);
-                window.location.href = finalUrl;
-            } else {
-                alert("Scanat: " + scanned);
-            }
-
-            if (stream) stream.getTracks().forEach(t => t.stop());
-        }
-
-        window.addEventListener('beforeunload', () => {
-            scanning = false;
-            if (stream) stream.getTracks().forEach(t => t.stop());
-        });
+        window.addEventListener('beforeunload', stopCamera);
     </script>
 </body>
 </html>
