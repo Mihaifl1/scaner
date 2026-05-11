@@ -3,29 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan QR & DataMatrix</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    
+    <title>Scan QR</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background: #000;
-            color: white;
-            margin:0;
-            padding:20px;
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            background: #000; 
+            color: white; 
+            margin:0; 
+            padding:20px; 
         }
         .container {
             position: relative;
             max-width: 500px;
             margin: 0 auto;
         }
-        video {
-            width:100%;
-            border:5px solid #0f0;
-            border-radius:15px;
-            display: none;
+        video { 
+            width:100%; 
+            border:5px solid #0f0; 
+            border-radius:15px; 
+            display: none; /* ascuns initial */
         }
         .scan-overlay {
             position: absolute;
@@ -38,7 +36,7 @@
             border-radius: 15px;
             box-shadow: 0 0 0 200px rgba(0,0,0,0.7);
             pointer-events: none;
-            display: none;
+            display: none; /* ascuns initial */
         }
         .scan-line {
             position: absolute;
@@ -54,34 +52,34 @@
             0% { top: 20%; }
             100% { top: 80%; }
         }
-        #result {
-            margin:20px;
-            padding:15px;
-            background:#222;
-            border-radius:12px;
-            font-size:1.3em;
+        #result { 
+            margin:20px; 
+            padding:15px; 
+            background:#222; 
+            border-radius:12px; 
+            font-size:1.3em; 
         }
-        button {
-            padding:18px 35px;
-            font-size:1.4em;
-            margin:15px;
-            border-radius:12px;
-            background:#0f0;
-            color:black;
-            font-weight:bold;
+        button { 
+            padding:18px 35px; 
+            font-size:1.4em; 
+            margin:15px; 
+            border-radius:12px; 
+            background:#0f0; 
+            color:black; 
+            font-weight:bold; 
         }
     </style>
 </head>
 <body>
-    <h1>📷 Scanare QR & DataMatrix</h1>
-   
+    <h1>📷 Scanare QR Code</h1>
+    
     <div class="container">
-        <video id="video" autoplay playsinline muted></video>
+        <video id="video" autoplay playsinline></video>
         <div class="scan-overlay" id="overlay">
             <div class="scan-line"></div>
         </div>
     </div>
-    
+
     <div id="result">Apasă butonul pentru a porni camera</div>
     <button onclick="startCamera()">▶ Pornire Cameră</button>
 
@@ -89,53 +87,62 @@
         let video = document.getElementById('video');
         let overlay = document.getElementById('overlay');
         let stream = null;
-        let html5QrCode = null;
 
         function startCamera() {
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = "Se deschide camera...";
+            document.getElementById('result').innerHTML = "Se deschide camera...";
 
-            navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment" }
+            navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" } 
             })
             .then(s => {
                 stream = s;
                 video.srcObject = stream;
+                
+                // Arată video + overlay după pornire
                 video.style.display = "block";
                 overlay.style.display = "block";
-                resultDiv.innerHTML = "✅ Încadrează codul (QR sau DataMatrix) în pătratul verde";
                 
-                // Scanare cu html5-qrcode
-                html5QrCode = new Html5Qrcode("video", { 
-                    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.DATA_MATRIX] 
-                });
-                
-                html5QrCode.start(stream, { fps: 10, qrbox: { width: 250, height: 250 }}, 
-                    (decodedText) => {
-                        resultDiv.innerHTML = `✅ Scanat:<br><b>${decodedText}</b>`;
-                        const returnUrl = new URLSearchParams(window.location.search).get('return');
-                        if (returnUrl) {
-                            let finalUrl = decodeURIComponent(returnUrl);
-                            finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(decodedText);
-                            window.location.href = finalUrl;
-                        }
-                        stopAll();
-                    }, 
-                    () => {}
-                );
+                document.getElementById('result').innerHTML = "✅ Încadrează QR-ul în pătratul verde";
+                scanQR();
             })
             .catch(err => {
-                resultDiv.innerHTML = `<span style="color:red">Eroare: ${err.message}</span>`;
+                document.getElementById('result').innerHTML = `<span style="color:red">Eroare: ${err.message}</span>`;
                 alert("Eroare cameră: " + err.message);
             });
         }
 
-        function stopAll() {
-            if (html5QrCode) html5QrCode.stop().catch(() => {});
-            if (stream) stream.getTracks().forEach(t => t.stop());
-        }
+        function scanQR() {
+            if (!video.videoWidth) {
+                setTimeout(scanQR, 200);
+                return;
+            }
 
-        window.addEventListener('beforeunload', stopAll);
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+
+            const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data, canvas.width, canvas.height);
+
+            if (code) {
+                const scanned = code.data;
+                document.getElementById('result').innerHTML = `✅ Scanat:<br><b>${scanned}</b>`;
+
+                const returnUrl = new URLSearchParams(window.location.search).get('return');
+                if (returnUrl) {
+                    let finalUrl = decodeURIComponent(returnUrl);
+                    finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(scanned);
+                    window.location.href = finalUrl;
+                } else {
+                    alert("Scanat: " + scanned);
+                }
+
+                if (stream) stream.getTracks().forEach(t => t.stop());
+            } else {
+                setTimeout(scanQR, 200);
+            }
+        }
     </script>
 </body>
 </html>
