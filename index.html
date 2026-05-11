@@ -1,175 +1,142 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan QR & DataMatrixd</title>
-    
-    <!-- jsQR pentru QR + ZXing pentru DataMatrix -->
-    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
-    <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
-    
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background: #000;
-            color: white;
-            margin:0;
-            padding:20px;
-        }
-        .container {
-            position: relative;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        video {
-            width:100%;
-            border:5px solid #0f0;
-            border-radius:15px;
-            display: none;
-        }
-        .scan-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 260px;
-            height: 260px;
-            border: 4px solid #00ff00;
-            border-radius: 15px;
-            box-shadow: 0 0 0 200px rgba(0,0,0,0.7);
-            pointer-events: none;
-            display: none;
-        }
-        .scan-line {
-            position: absolute;
-            top: 20%;
-            left: 10%;
-            right: 10%;
-            height: 3px;
-            background: #00ff00;
-            box-shadow: 0 0 12px #00ff00;
-            animation: scan 2s linear infinite;
-        }
-        @keyframes scan {
-            0% { top: 20%; }
-            100% { top: 80%; }
-        }
-        #result {
-            margin:20px;
-            padding:15px;
-            background:#222;
-            border-radius:12px;
-            font-size:1.3em;
-        }
-        button {
-            padding:18px 35px;
-            font-size:1.4em;
-            margin:15px;
-            border-radius:12px;
-            background:#0f0;
-            color:black;
-            font-weight:bold;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Scanner QR + DataMatrixs/title>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+
+body{
+    background:#000;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+    margin:0;
+    padding:20px;
+}
+
+#reader{
+    width:100%;
+    max-width:500px;
+    margin:auto;
+    border:5px solid #00ff00;
+    border-radius:20px;
+    overflow:hidden;
+}
+
+#result{
+    margin-top:20px;
+    background:#222;
+    padding:15px;
+    border-radius:15px;
+    font-size:1.2em;
+}
+
+button{
+    padding:18px 35px;
+    font-size:1.3em;
+    border:none;
+    border-radius:15px;
+    background:#00ff00;
+    font-weight:bold;
+    margin-top:20px;
+}
+
+</style>
 </head>
+
 <body>
-    <h1>📷 Scanare QR & DataMatrix</h1>
-   
-    <div class="container">
-        <video id="video" autoplay playsinline muted></video>
-        <div class="scan-overlay" id="overlay">
-            <div class="scan-line"></div>
-        </div>
-    </div>
-    
-    <div id="result">Apasă butonul pentru a porni camera</div>
-    <button onclick="startCamera()">▶ Pornire Cameră</button>
 
-    <script>
-        let video = document.getElementById('video');
-        let overlay = document.getElementById('overlay');
-        let stream = null;
-        let scanning = true;
+<h1>📷 QR + DataMatrix Scanner</h1>
 
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-            ZXing.BarcodeFormat.QR_CODE,
-            ZXing.BarcodeFormat.DATA_MATRIX
-        ]);
+<div id="reader"></div>
 
-        const reader = new ZXing.BrowserMultiFormatReader(hints);
+<div id="result">
+Apasă Start
+</div>
 
-        function startCamera() {
-            document.getElementById('result').innerHTML = "Se deschide camera...";
+<button onclick="startScanner()">
+▶ Start Scanner
+</button>
 
-            navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment" }
-            })
-            .then(s => {
-                stream = s;
-                video.srcObject = stream;
-                video.style.display = "block";
-                overlay.style.display = "block";
-                
-                document.getElementById('result').innerHTML = "✅ Încadrează codul (QR sau DataMatrix) în pătratul verde";
-                scanLoop();
-            })
-            .catch(err => {
-                document.getElementById('result').innerHTML = `<span style="color:red">Eroare: ${err.message}</span>`;
-                alert("Eroare cameră: " + err.message);
-            });
-        }
+<script>
 
-        async function scanLoop() {
-            if (!scanning) return;
+let scanner;
 
-            if (video.videoWidth < 100) {
-                setTimeout(scanLoop, 200);
-                return;
+function startScanner(){
+
+    document.getElementById("result").innerHTML =
+        "Se pornește camera...";
+
+    scanner = new Html5Qrcode("reader");
+
+    scanner.start(
+        {
+            facingMode: "environment"
+        },
+
+        {
+            fps: 15,
+            qrbox: {
+                width: 280,
+                height: 280
+            },
+
+            formatsToSupport: [
+
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.DATA_MATRIX,
+
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.EAN_13
+            ]
+        },
+
+        (decodedText, decodedResult) => {
+
+            navigator.vibrate?.(200);
+
+            document.getElementById("result").innerHTML =
+                "✅ Scanat:<br><b>" + decodedText + "</b>";
+
+            scanner.stop();
+
+            const returnUrl =
+                new URLSearchParams(window.location.search)
+                .get('return');
+
+            if(returnUrl){
+
+                let finalUrl =
+                    decodeURIComponent(returnUrl);
+
+                finalUrl +=
+                    (finalUrl.includes('?') ? '&' : '?')
+                    + 'code='
+                    + encodeURIComponent(decodedText);
+
+                setTimeout(() => {
+                    window.location.href = finalUrl;
+                }, 500);
             }
+        },
 
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0);
-
-                // Încercăm cu ZXing (suportă QR + DataMatrix)
-                const result = await reader.decodeFromImageElement(canvas);
-                if (result && result.text) {
-                    handleSuccess(result.text);
-                    return;
-                }
-            } catch (e) {
-                // nu a găsit cod
-            }
-
-            setTimeout(scanLoop, 180);
+        (errorMessage) => {
         }
+    )
+    .catch(err => {
 
-        function handleSuccess(scanned) {
-            scanning = false;
-            document.getElementById('result').innerHTML = `✅ Scanat:<br><b>${scanned}</b>`;
+        document.getElementById("result").innerHTML =
+            "❌ Eroare cameră: " + err;
+    });
+}
 
-            const returnUrl = new URLSearchParams(window.location.search).get('return');
-            if (returnUrl) {
-                let finalUrl = decodeURIComponent(returnUrl);
-                finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(scanned);
-                window.location.href = finalUrl;
-            } else {
-                alert("Scanat: " + scanned);
-            }
+</script>
 
-            if (stream) stream.getTracks().forEach(t => t.stop());
-        }
-
-        window.addEventListener('beforeunload', () => {
-            scanning = false;
-            if (stream) stream.getTracks().forEach(t => t.stop());
-        });
-    </script>
 </body>
 </html>
