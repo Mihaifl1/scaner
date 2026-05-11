@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan QR & DataMatrix1</title>
+    <title>Scan QR & DataMatrix</title>
     
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     
@@ -89,7 +89,7 @@
         let video = document.getElementById('video');
         let overlay = document.getElementById('overlay');
         let stream = null;
-        let html5QrCode = null;
+        let scanning = false;
 
         function startCamera() {
             document.getElementById('result').innerHTML = "Se deschide camera...";
@@ -100,14 +100,13 @@
             .then(s => {
                 stream = s;
                 video.srcObject = stream;
-                
                 video.style.display = "block";
                 overlay.style.display = "block";
                 
                 document.getElementById('result').innerHTML = "✅ Încadrează codul (QR sau DataMatrix) în pătratul verde";
                 
-                // Pornim scanarea cu suport pentru ambele tipuri
-                startAdvancedScanning();
+                scanning = true;
+                scanLoop();           // bucla de scanare
             })
             .catch(err => {
                 document.getElementById('result').innerHTML = `<span style="color:red">Eroare: ${err.message}</span>`;
@@ -115,44 +114,56 @@
             });
         }
 
-        function startAdvancedScanning() {
-            html5QrCode = new Html5Qrcode("video", {
-                formatsToSupport: [
-                    Html5QrcodeSupportedFormats.QR_CODE,
-                    Html5QrcodeSupportedFormats.DATA_MATRIX
-                ]
-            });
+        async function scanLoop() {
+            if (!scanning) return;
 
-            html5QrCode.start(
-                stream, 
-                { 
-                    fps: 12, 
-                    qrbox: { width: 260, height: 260 } 
-                },
-                (decodedText) => {
-                    document.getElementById('result').innerHTML = `✅ Scanat:<br><b>${decodedText}</b>`;
-                    
-                    const returnUrl = new URLSearchParams(window.location.search).get('return');
-                    if (returnUrl) {
-                        let finalUrl = decodeURIComponent(returnUrl);
-                        finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(decodedText);
-                        window.location.href = finalUrl;
-                    } else {
-                        alert("Scanat: " + decodedText);
-                    }
-                    
-                    stopScanning();
-                },
-                () => {} // erori normale (când nu vede cod)
-            ).catch(err => console.error(err));
+            if (video.videoWidth === 0) {
+                setTimeout(scanLoop, 200);
+                return;
+            }
+
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+
+                // Folosim html5-qrcode pentru ambele tipuri (mai bun la DataMatrix)
+                const html5QrCode = new Html5Qrcode("video"); // temporar doar pentru decode
+                const result = await html5QrCode.decodeFromImage(canvas.toDataURL());
+
+                if (result && result.decodedText) {
+                    handleScanSuccess(result.decodedText);
+                    return;
+                }
+            } catch (e) {
+                // nu am găsit cod → continuăm
+            }
+
+            setTimeout(scanLoop, 150); // scanare rapidă
         }
 
-        function stopScanning() {
-            if (html5QrCode) html5QrCode.stop().catch(() => {});
+        function handleScanSuccess(scanned) {
+            scanning = false;
+            document.getElementById('result').innerHTML = `✅ Scanat:<br><b>${scanned}</b>`;
+
+            const returnUrl = new URLSearchParams(window.location.search).get('return');
+            if (returnUrl) {
+                let finalUrl = decodeURIComponent(returnUrl);
+                finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(scanned);
+                window.location.href = finalUrl;
+            } else {
+                alert("Scanat: " + scanned);
+            }
+
             if (stream) stream.getTracks().forEach(t => t.stop());
         }
 
-        window.addEventListener('beforeunload', stopScanning);
+        window.addEventListener('beforeunload', () => {
+            scanning = false;
+            if (stream) stream.getTracks().forEach(t => t.stop());
+        });
     </script>
 </body>
 </html>
