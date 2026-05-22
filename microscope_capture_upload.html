@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Microscope Capture Upload</title>
+
+<style>
+body{
+    margin:0;
+    background:#000;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+}
+
+video{
+    width:100%;
+    max-width:700px;
+    border:4px solid #00ff88;
+    border-radius:15px;
+    margin-top:10px;
+}
+
+canvas{
+    display:none;
+}
+
+button{
+    padding:15px 25px;
+    margin:10px;
+    border:none;
+    border-radius:10px;
+    font-size:18px;
+    cursor:pointer;
+}
+
+.capture{
+    background:#00aa55;
+    color:white;
+}
+
+.upload{
+    background:#0066ff;
+    color:white;
+}
+
+img{
+    width:100%;
+    max-width:700px;
+    margin-top:10px;
+    border-radius:15px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Microscope Capture</h2>
+
+<video id="video" autoplay playsinline></video>
+
+<br>
+
+<button class="capture" onclick="capturePhoto()">
+CAPTURE
+</button>
+
+<button class="upload" onclick="uploadPhoto()">
+UPLOAD
+</button>
+
+<br>
+
+<img id="preview">
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const preview = document.getElementById('preview');
+
+let capturedBlob = null;
+
+// ================= CAMERA =================
+async function startCamera(){
+
+    try{
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video:{
+                facingMode:"environment"
+            },
+            audio:false
+        });
+
+        video.srcObject = stream;
+
+    }catch(err){
+
+        alert("Camera error: " + err);
+
+    }
+
+}
+
+startCamera();
+
+// ================= CAPTURE =================
+function capturePhoto(){
+
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    ctx.drawImage(video,0,0);
+
+    canvas.toBlob(function(blob){
+
+        capturedBlob = blob;
+
+        preview.src = URL.createObjectURL(blob);
+
+    },'image/jpeg',0.95);
+
+}
+
+// ================= UPLOAD =================
+async function uploadPhoto(){
+
+    if(!capturedBlob){
+
+        alert("Capture image first");
+        return;
+
+    }
+
+    const formData = new FormData();
+
+    formData.append(
+        "photo",
+        capturedBlob,
+        "microscope.jpg"
+    );
+
+    try{
+
+        const response = await fetch(
+            "http://192.168.66.240/upload.php",
+            {
+                method:"POST",
+                body:formData
+            }
+        );
+
+        const result = await response.text();
+
+        alert("Uploaded: " + result);
+
+        // ================= RETURN =================
+        const params = new URLSearchParams(window.location.search);
+
+        const returnUrl = params.get("return");
+
+        if(returnUrl){
+
+            window.location.href = returnUrl;
+
+        }
+
+    }catch(err){
+
+        alert("Upload error: " + err);
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
