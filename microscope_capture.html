@@ -467,16 +467,21 @@ function captureImage(){
         );
 
     localStorage.setItem(
-        'capturedImage',
-        imageData
-    );
+    'capturedImage',
+    imageData
+);
 
-    statusDiv.innerHTML =
-        "✅ Imagine capturată";
+statusDiv.innerHTML =
+    "✅ Imagine capturată";
 
-    alert(
-        "Imagine capturată!\nRevino în pagina principală."
-    );
+/************************************************
+ * ÎNCHIDE PAGINA
+ ************************************************/
+setTimeout(() => {
+
+    window.close();
+
+}, 300);
 }
 
 /************************************************
