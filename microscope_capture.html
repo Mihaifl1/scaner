@@ -270,20 +270,49 @@ const cameraSelect =
 let currentStream = null;
 
 /************************************************
- * CERE PERMISIUNE
+ * AUTO START
  ************************************************/
 
-async function requestCameraPermission(){
+window.addEventListener(
+    "load",
+    async () => {
+
+        await autoStartCamera();
+    }
+);
+
+/************************************************
+ * AUTO DETECT + START
+ ************************************************/
+
+async function autoStartCamera(){
 
     try{
 
         statusDiv.innerHTML =
-            "Cer permisiune...";
+            "Cer permisiune cameră...";
 
-        await navigator.mediaDevices
+        /****************************************
+         * CERE ACCES
+         ****************************************/
+
+        const tempStream =
+            await navigator.mediaDevices
             .getUserMedia({
-                video:true
+
+                video:true,
+                audio:false
             });
+
+        tempStream
+        .getTracks()
+        .forEach(
+            track => track.stop()
+        );
+
+        /****************************************
+         * LISTĂ CAMERE
+         ****************************************/
 
         const devices =
             await navigator.mediaDevices
@@ -296,6 +325,8 @@ async function requestCameraPermission(){
             );
 
         cameraSelect.innerHTML = "";
+
+        let selectedDeviceId = null;
 
         videoDevices.forEach(
             (device,index)=>{
@@ -315,75 +346,40 @@ async function requestCameraPermission(){
             cameraSelect.appendChild(
                 option
             );
-        });
 
-        /********************************************
-         * AUTO SELECT DINO
-         ********************************************/
-
-        for(
-            let i=0;
-            i<cameraSelect.options.length;
-            i++
-        ){
+            /************************************
+             * AUTO DINO
+             ************************************/
 
             if(
-                cameraSelect.options[i]
-                .text
+                device.label
                 .toLowerCase()
                 .includes("dino")
             ){
 
-                cameraSelect.selectedIndex = i;
+                selectedDeviceId =
+                    device.deviceId;
 
-                break;
+                option.selected = true;
             }
+        });
+
+        /****************************************
+         * DACĂ NU GĂSEȘTE DINO
+         ****************************************/
+
+        if(!selectedDeviceId &&
+           videoDevices.length > 0){
+
+            selectedDeviceId =
+                videoDevices[0].deviceId;
+
+            cameraSelect.selectedIndex = 0;
         }
 
-        statusDiv.innerHTML =
-            "✅ Camere detectate: " +
-            videoDevices.length;
-
-    }catch(err){
-
-        console.log(err);
-
-        statusDiv.innerHTML =
-            "❌ " + err.message;
-    }
-}
-
-/************************************************
- * PORNEȘTE CAMERA
- ************************************************/
-
-async function startSelectedCamera(){
-
-    try{
-
-        const deviceId =
-            cameraSelect.value;
-
-        if(!deviceId){
-
-            alert(
-                "Selectează camera!"
-            );
-
-            return;
-        }
-
-        if(currentStream){
-
-            currentStream
-            .getTracks()
-            .forEach(
-                track => track.stop()
-            );
-        }
-
-        statusDiv.innerHTML =
-            "Pornesc camera...";
+        /****************************************
+         * PORNEȘTE CAMERA
+         ****************************************/
 
         currentStream =
             await navigator.mediaDevices
@@ -392,7 +388,7 @@ async function startSelectedCamera(){
                 video:{
 
                     deviceId:{
-                        exact:deviceId
+                        exact:selectedDeviceId
                     },
 
                     width:{
@@ -417,7 +413,7 @@ async function startSelectedCamera(){
         await video.play();
 
         statusDiv.innerHTML =
-            "✅ Camera pornită";
+            "✅ Camera pornită automat";
 
     }catch(err){
 
@@ -429,7 +425,7 @@ async function startSelectedCamera(){
 }
 
 /************************************************
- * CAPTUREAZĂ IMAGINE
+ * CAPTUREAZĂ
  ************************************************/
 
 function captureImage(){
@@ -467,21 +463,18 @@ function captureImage(){
         );
 
     localStorage.setItem(
-    'capturedImage',
-    imageData
-);
+        'capturedImage',
+        imageData
+    );
 
-statusDiv.innerHTML =
-    "✅ Imagine capturată";
+    statusDiv.innerHTML =
+        "✅ Imagine capturată";
 
-/************************************************
- * ÎNCHIDE PAGINA
- ************************************************/
-setTimeout(() => {
+    setTimeout(() => {
 
-    window.close();
+        window.close();
 
-}, 300);
+    }, 300);
 }
 
 /************************************************
