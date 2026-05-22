@@ -1,0 +1,488 @@
+<?php
+// microscope_capture.php
+?>
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+<title>Microscope Capture</title>
+
+<style>
+
+body{
+
+    margin:0;
+
+    padding:0;
+
+    background:#000;
+
+    color:white;
+
+    font-family:Arial;
+
+    text-align:center;
+
+    overflow:hidden;
+}
+
+.container{
+
+    position:relative;
+
+    width:100vw;
+
+    height:100vh;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    flex-direction:column;
+}
+
+video{
+
+    width:90vw;
+
+    max-width:1200px;
+
+    border:5px solid #00ff00;
+
+    border-radius:15px;
+
+    background:black;
+
+    object-fit:cover;
+}
+
+.overlay{
+
+    position:absolute;
+
+    width:300px;
+
+    height:300px;
+
+    border:4px solid #00ff00;
+
+    border-radius:15px;
+
+    pointer-events:none;
+
+    box-shadow:0 0 0 9999px rgba(0,0,0,0.5);
+}
+
+.controls{
+
+    margin-top:20px;
+
+    display:flex;
+
+    gap:15px;
+
+    flex-wrap:wrap;
+
+    justify-content:center;
+}
+
+button{
+
+    padding:15px 25px;
+
+    border:none;
+
+    border-radius:12px;
+
+    font-size:18px;
+
+    font-weight:bold;
+
+    cursor:pointer;
+}
+
+.start-btn{
+
+    background:#00cc00;
+
+    color:white;
+}
+
+.capture-btn{
+
+    background:#ff8800;
+
+    color:white;
+}
+
+.close-btn{
+
+    background:red;
+
+    color:white;
+}
+
+select{
+
+    padding:12px;
+
+    border-radius:10px;
+
+    font-size:16px;
+
+    min-width:300px;
+}
+
+#status{
+
+    margin-top:15px;
+
+    font-size:18px;
+
+    color:#00ff00;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="overlay"></div>
+
+    <video
+        id="video"
+        autoplay
+        playsinline
+        muted>
+    </video>
+
+    <canvas
+        id="canvas"
+        style="display:none;">
+    </canvas>
+
+    <div class="controls">
+
+        <button
+            class="start-btn"
+            onclick="requestCameraPermission()">
+
+            Permite acces cameră
+
+        </button>
+
+        <select id="cameraSelect">
+
+            <option value="">
+                Selectează camera
+            </option>
+
+        </select>
+
+        <button
+            class="start-btn"
+            onclick="startSelectedCamera()">
+
+            Pornește camera
+
+        </button>
+
+        <button
+            class="capture-btn"
+            onclick="captureImage()">
+
+            📸 Capturează
+
+        </button>
+
+        <button
+            class="close-btn"
+            onclick="closeWindow()">
+
+            Închide
+
+        </button>
+
+    </div>
+
+    <div id="status">
+
+        Aștept acces cameră...
+
+    </div>
+
+</div>
+
+<script>
+
+/************************************************
+ * VARIABILE
+ ************************************************/
+
+const video =
+    document.getElementById(
+        "video"
+    );
+
+const canvas =
+    document.getElementById(
+        "canvas"
+    );
+
+const statusDiv =
+    document.getElementById(
+        "status"
+    );
+
+const cameraSelect =
+    document.getElementById(
+        "cameraSelect"
+    );
+
+let currentStream = null;
+
+/************************************************
+ * CERE PERMISIUNE
+ ************************************************/
+
+async function requestCameraPermission(){
+
+    try{
+
+        statusDiv.innerHTML =
+            "Cer permisiune...";
+
+        await navigator.mediaDevices
+            .getUserMedia({
+                video:true
+            });
+
+        const devices =
+            await navigator.mediaDevices
+            .enumerateDevices();
+
+        const videoDevices =
+            devices.filter(
+                device =>
+                device.kind === "videoinput"
+            );
+
+        cameraSelect.innerHTML = "";
+
+        videoDevices.forEach(
+            (device,index)=>{
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+            option.value =
+                device.deviceId;
+
+            option.text =
+                device.label ||
+                "Camera " + (index + 1);
+
+            cameraSelect.appendChild(
+                option
+            );
+        });
+
+        statusDiv.innerHTML =
+            "Camere detectate: " +
+            videoDevices.length;
+
+    }catch(err){
+
+        console.log(err);
+
+        statusDiv.innerHTML =
+            "❌ " + err.message;
+    }
+}
+
+/************************************************
+ * PORNEȘTE CAMERA
+ ************************************************/
+
+async function startSelectedCamera(){
+
+    try{
+
+        const deviceId =
+            cameraSelect.value;
+
+        if(!deviceId){
+
+            alert(
+                "Selectează camera!"
+            );
+
+            return;
+        }
+
+        if(currentStream){
+
+            currentStream
+            .getTracks()
+            .forEach(
+                track => track.stop()
+            );
+        }
+
+        statusDiv.innerHTML =
+            "Pornesc camera...";
+
+        currentStream =
+            await navigator.mediaDevices
+            .getUserMedia({
+
+                video:{
+
+                    deviceId:{
+                        exact:deviceId
+                    },
+
+                    width:{
+                        ideal:1920
+                    },
+
+                    height:{
+                        ideal:1080
+                    },
+
+                    frameRate:{
+                        ideal:30
+                    }
+                },
+
+                audio:false
+            });
+
+        video.srcObject =
+            currentStream;
+
+        await video.play();
+
+        statusDiv.innerHTML =
+            "✅ Camera pornită";
+
+    }catch(err){
+
+        console.log(err);
+
+        statusDiv.innerHTML =
+            "❌ " + err.message;
+    }
+}
+
+/************************************************
+ * CAPTUREAZĂ IMAGINE
+ ************************************************/
+
+function captureImage(){
+
+    if(video.videoWidth === 0){
+
+        alert(
+            "Camera nu este pornită!"
+        );
+
+        return;
+    }
+
+    canvas.width =
+        video.videoWidth;
+
+    canvas.height =
+        video.videoHeight;
+
+    const ctx =
+        canvas.getContext("2d");
+
+    ctx.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    const imageData =
+        canvas.toDataURL(
+            "image/jpeg",
+            0.95
+        );
+
+    const returnUrl =
+        new URLSearchParams(
+            window.location.search
+        ).get("return");
+
+    if(returnUrl){
+
+        const finalUrl =
+            decodeURIComponent(
+                returnUrl
+            ) +
+            (
+                returnUrl.includes("?")
+                ? "&"
+                : "?"
+            ) +
+            "image=" +
+            encodeURIComponent(
+                imageData
+            );
+
+        window.location.href =
+            finalUrl;
+
+    }else{
+
+        const a =
+            document.createElement("a");
+
+        a.href = imageData;
+
+        a.download =
+            "microscope_capture.jpg";
+
+        a.click();
+    }
+}
+
+/************************************************
+ * ÎNCHIDE
+ ************************************************/
+
+function closeWindow(){
+
+    if(currentStream){
+
+        currentStream
+        .getTracks()
+        .forEach(
+            track => track.stop()
+        );
+    }
+
+    window.close();
+}
+
+</script>
+
+</body>
+</html>
