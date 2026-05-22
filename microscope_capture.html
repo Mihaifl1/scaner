@@ -426,42 +426,23 @@ function captureImage(){
             0.95
         );
 
-    const returnUrl =
-        new URLSearchParams(
-            window.location.search
-        ).get("return");
+    if(window.opener){
 
-    if(returnUrl){
+    window.opener.postMessage({
 
-        const finalUrl =
-            decodeURIComponent(
-                returnUrl
-            ) +
-            (
-                returnUrl.includes("?")
-                ? "&"
-                : "?"
-            ) +
-            "image=" +
-            encodeURIComponent(
-                imageData
-            );
+        type:"microscope-image",
 
-        window.location.href =
-            finalUrl;
+        image:imageData
 
-    }else{
+    },"*");
 
-        const a =
-            document.createElement("a");
+    window.close();
 
-        a.href = imageData;
+}else{
 
-        a.download =
-            "microscope_capture.jpg";
-
-        a.click();
-    }
+    alert(
+        "Fereastra principală nu există!"
+    );
 }
 
 /************************************************
