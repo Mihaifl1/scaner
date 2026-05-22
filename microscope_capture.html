@@ -1,290 +1,162 @@
-<?php
-// microscope_capture.php
-?>
 <!DOCTYPE html>
 <html lang="ro">
 
 <head>
-
 <meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Microscope Capture</title>
 
 <style>
-
 html,
 body{
-
     margin:0;
-
     padding:0;
-
     width:100%;
-
     height:100%;
-
     overflow:hidden;
-
     background:black;
-
     font-family:Arial;
 }
 
-/************************************************
- * VIDEO FULLSCREEN
- ************************************************/
-
 video{
-
     position:fixed;
-
     top:0;
     left:0;
-
     width:100vw;
-
     height:100vh;
-
     object-fit:contain;
-
     background:black;
-
     z-index:1;
 }
 
-/************************************************
- * CONTROLS
- ************************************************/
-
 .controls{
-
     position:fixed;
-
     bottom:20px;
-
     left:50%;
-
     transform:translateX(-50%);
-
     z-index:9999;
-
     background:rgba(0,0,0,0.65);
-
     padding:15px;
-
     border-radius:18px;
-
     display:flex;
-
     gap:15px;
-
     flex-wrap:wrap;
-
     justify-content:center;
-
     align-items:center;
-
-    backdrop-filter:blur(10px);
 }
 
-/************************************************
- * BUTTONS
- ************************************************/
-
 button{
-
     padding:15px 22px;
-
     border:none;
-
     border-radius:12px;
-
     font-size:18px;
-
     font-weight:bold;
-
     cursor:pointer;
 }
 
 .start-btn{
-
     background:#00aa00;
-
     color:white;
 }
 
 .capture-btn{
-
     background:#ff8800;
-
     color:white;
 }
 
 .close-btn{
-
     background:red;
-
     color:white;
 }
 
-/************************************************
- * SELECT
- ************************************************/
-
 select{
-
     padding:12px;
-
     border-radius:10px;
-
     font-size:16px;
-
     min-width:320px;
 }
 
-/************************************************
- * STATUS
- ************************************************/
-
 #status{
-
     position:fixed;
-
     top:15px;
-
     left:50%;
-
     transform:translateX(-50%);
-
     z-index:9999;
-
     background:rgba(0,0,0,0.6);
-
     color:#00ff00;
-
     padding:10px 18px;
-
     border-radius:12px;
-
     font-size:18px;
 }
-
 </style>
-
 </head>
 
 <body>
 
-<video
-    id="video"
-    autoplay
-    playsinline
-    muted>
-</video>
-
-<canvas
-    id="canvas"
-    style="display:none;">
-</canvas>
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas" style="display:none;"></canvas>
 
 <div id="status">
-
     Aștept acces cameră...
-
 </div>
 
 <div class="controls">
 
     <button
         class="start-btn"
-        onclick="requestCameraPermission()">
-
-        Permite acces cameră
-
+        onclick="autoStartCamera()">
+        Permite / Pornește camera
     </button>
 
     <select id="cameraSelect">
-
         <option value="">
             Selectează camera
         </option>
-
     </select>
-
-    <button
-        class="start-btn"
-        onclick="startSelectedCamera()">
-
-        Pornește camera
-
-    </button>
 
     <button
         class="capture-btn"
         onclick="captureImage()">
-
         📸 Capturează
-
     </button>
 
     <button
         class="close-btn"
         onclick="closeWindow()">
-
         Închide
-
     </button>
 
 </div>
 
 <script>
-
-/************************************************
- * VARIABILE
- ************************************************/
-
 const video =
-    document.getElementById(
-        "video"
-    );
+    document.getElementById("video");
 
 const canvas =
-    document.getElementById(
-        "canvas"
-    );
+    document.getElementById("canvas");
 
 const statusDiv =
-    document.getElementById(
-        "status"
-    );
+    document.getElementById("status");
 
 const cameraSelect =
-    document.getElementById(
-        "cameraSelect"
-    );
+    document.getElementById("cameraSelect");
 
 let currentStream = null;
+
+const UPLOAD_URL =
+    "http://192.168.66.240/upload_microscope.php";
 
 /************************************************
  * AUTO START
  ************************************************/
-
-window.addEventListener(
-    "load",
-    async () => {
-
-        await autoStartCamera();
-    }
-);
+window.addEventListener("load", async () => {
+    await autoStartCamera();
+});
 
 /************************************************
- * AUTO DETECT + START
+ * AUTO DETECT + START CAMERA
  ************************************************/
-
 async function autoStartCamera(){
 
     try{
@@ -292,49 +164,32 @@ async function autoStartCamera(){
         statusDiv.innerHTML =
             "Cer permisiune cameră...";
 
-        /****************************************
-         * CERE ACCES
-         ****************************************/
-
         const tempStream =
-            await navigator.mediaDevices
-            .getUserMedia({
-
+            await navigator.mediaDevices.getUserMedia({
                 video:true,
                 audio:false
             });
 
         tempStream
         .getTracks()
-        .forEach(
-            track => track.stop()
-        );
-
-        /****************************************
-         * LISTĂ CAMERE
-         ****************************************/
+        .forEach(track => track.stop());
 
         const devices =
-            await navigator.mediaDevices
-            .enumerateDevices();
+            await navigator.mediaDevices.enumerateDevices();
 
         const videoDevices =
             devices.filter(
-                device =>
-                device.kind === "videoinput"
+                device => device.kind === "videoinput"
             );
 
         cameraSelect.innerHTML = "";
 
         let selectedDeviceId = null;
 
-        videoDevices.forEach(
-            (device,index)=>{
+        videoDevices.forEach((device,index)=>{
 
             const option =
-                document.createElement(
-                    "option"
-                );
+                document.createElement("option");
 
             option.value =
                 device.deviceId;
@@ -343,20 +198,12 @@ async function autoStartCamera(){
                 device.label ||
                 "Camera " + (index + 1);
 
-            cameraSelect.appendChild(
-                option
-            );
-
-            /************************************
-             * AUTO DINO
-             ************************************/
+            cameraSelect.appendChild(option);
 
             if(
-                device.label
-                .toLowerCase()
-                .includes("dino")
+                device.label &&
+                device.label.toLowerCase().includes("dino")
             ){
-
                 selectedDeviceId =
                     device.deviceId;
 
@@ -364,46 +211,33 @@ async function autoStartCamera(){
             }
         });
 
-        /****************************************
-         * DACĂ NU GĂSEȘTE DINO
-         ****************************************/
-
-        if(!selectedDeviceId &&
-           videoDevices.length > 0){
-
+        if(!selectedDeviceId && videoDevices.length > 0){
             selectedDeviceId =
                 videoDevices[0].deviceId;
 
             cameraSelect.selectedIndex = 0;
         }
 
-        /****************************************
-         * PORNEȘTE CAMERA
-         ****************************************/
+        if(!selectedDeviceId){
+            statusDiv.innerHTML =
+                "❌ Nu am găsit cameră";
+            return;
+        }
+
+        if(currentStream){
+            currentStream
+            .getTracks()
+            .forEach(track => track.stop());
+        }
 
         currentStream =
-            await navigator.mediaDevices
-            .getUserMedia({
-
+            await navigator.mediaDevices.getUserMedia({
                 video:{
-
-                    deviceId:{
-                        exact:selectedDeviceId
-                    },
-
-                    width:{
-                        ideal:1920
-                    },
-
-                    height:{
-                        ideal:1080
-                    },
-
-                    frameRate:{
-                        ideal:30
-                    }
+                    deviceId:{ exact:selectedDeviceId },
+                    width:{ ideal:1920 },
+                    height:{ ideal:1080 },
+                    frameRate:{ ideal:30 }
                 },
-
                 audio:false
             });
 
@@ -413,7 +247,7 @@ async function autoStartCamera(){
         await video.play();
 
         statusDiv.innerHTML =
-            "✅ Camera pornită automat";
+            "✅ Camera pornită";
 
     }catch(err){
 
@@ -425,17 +259,12 @@ async function autoStartCamera(){
 }
 
 /************************************************
- * CAPTUREAZĂ
+ * CAPTURE + UPLOAD SERVER
  ************************************************/
-
-function captureImage(){
+async function captureImage(){
 
     if(video.videoWidth === 0){
-
-        alert(
-            "Camera nu este pornită!"
-        );
-
+        alert("Camera nu este pornită!");
         return;
     }
 
@@ -459,42 +288,89 @@ function captureImage(){
     const imageData =
         canvas.toDataURL(
             "image/jpeg",
-            0.95
+            0.92
         );
 
-    localStorage.setItem(
-        'capturedImage',
-        imageData
-    );
-
     statusDiv.innerHTML =
-        "✅ Imagine capturată";
+        "Trimit imaginea pe server...";
 
-    setTimeout(() => {
+    try{
 
-        window.close();
+        const response =
+            await fetch(UPLOAD_URL, {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    image:imageData
+                })
+            });
 
-    }, 300);
+        const result =
+            await response.json();
+
+        if(!result.success){
+            alert(
+                "Eroare upload: " +
+                (result.error || "necunoscut")
+            );
+            return;
+        }
+
+        statusDiv.innerHTML =
+            "✅ Imagine salvată";
+
+        const returnUrl =
+            new URLSearchParams(
+                window.location.search
+            ).get("return");
+
+        if(returnUrl){
+
+            const separator =
+                decodeURIComponent(returnUrl).includes("?")
+                ? "&"
+                : "?";
+
+            window.location.href =
+                decodeURIComponent(returnUrl) +
+                separator +
+                "captured_file=" +
+                encodeURIComponent(result.file);
+
+        }else{
+
+            alert(
+                "Imagine salvată: " +
+                result.file
+            );
+        }
+
+    }catch(err){
+
+        console.log(err);
+
+        alert(
+            "Upload blocat sau eroare rețea. " +
+            "Dacă pagina este HTTPS și serverul este HTTP, Chrome poate bloca trimiterea."
+        );
+    }
 }
 
 /************************************************
  * ÎNCHIDE
  ************************************************/
-
 function closeWindow(){
 
     if(currentStream){
-
         currentStream
         .getTracks()
-        .forEach(
-            track => track.stop()
-        );
+        .forEach(track => track.stop());
     }
 
     window.close();
 }
-
 </script>
 
 </body>
